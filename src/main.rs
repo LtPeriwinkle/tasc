@@ -18,4 +18,5 @@ fn main() {
         println!("{}", USAGE);
         std::process::exit(1);
     }
+    let cfg = cfg.unwrap();
 }
