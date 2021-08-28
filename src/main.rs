@@ -1,6 +1,4 @@
-mod args;
-use args::*;
-
+use tasc::Config;
 const USAGE: &str = "compile or interpret tas-script\n
 USAGE:
     tasc SUBCOMMAND INPUT\n
