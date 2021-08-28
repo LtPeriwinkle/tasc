@@ -5,7 +5,7 @@ use std::str::FromStr;
 pub enum Action {
     Interpret,
     Compile,
-    Check
+    Check,
 }
 
 impl FromStr for Action {
@@ -16,7 +16,7 @@ impl FromStr for Action {
             "interpret" | "i" => Ok(Action::Interpret),
             "compile" | "c" => Ok(Action::Compile),
             "verify" | "check" | "v" => Ok(Action::Check),
-             _ => Err("Not a valid action".into())
+            _ => Err("Not a valid action".into()),
         }
     }
 }
@@ -31,8 +31,9 @@ impl Config {
         let args = env::args();
         let mut args = args.skip(1);
         let cfg = Config {
-          act: Action::from_str(&args.next().ok_or("Not enough arguments.".to_owned())?)?,
-          infile: PathBuf::from_str(&args.next().ok_or("Not enough arguments.".to_owned())?).unwrap()
+            act: Action::from_str(&args.next().ok_or("Not enough arguments.".to_owned())?)?,
+            infile: PathBuf::from_str(&args.next().ok_or("Not enough arguments.".to_owned())?)
+                .unwrap(),
         };
         Ok(cfg)
     }
