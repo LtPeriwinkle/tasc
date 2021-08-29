@@ -21,5 +21,6 @@ impl Display for TasError {
 }
 
 pub fn run_tas(cfg: Config) -> Result<(), TasError> {
+    parse::gen_tas(cfg.infile)?;
     Ok(())
 }
