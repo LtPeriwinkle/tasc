@@ -1,4 +1,4 @@
-use tasc::{Config, run_tas};
+use tasc::{run_tas, Config};
 const USAGE: &str = "compile or interpret tas-script\n
 USAGE:
     tasc SUBCOMMAND INPUT\n
@@ -17,5 +17,8 @@ fn main() {
         std::process::exit(1);
     }
     let cfg = cfg.unwrap();
-    run_tas(cfg).unwrap_or_else(|e| {eprintln!("{}", e); std::process::exit(1)})
+    run_tas(cfg).unwrap_or_else(|e| {
+        eprintln!("{}", e);
+        std::process::exit(1)
+    })
 }
