@@ -7,6 +7,7 @@ mod parse;
 #[derive(Debug)]
 pub enum TasError {
     Parse { l: usize, c: usize, e: &'static str },
+    Syntax { l: usize, c: usize, e: &'static str},
     Fs { e: String },
 }
 
@@ -14,6 +15,7 @@ impl Display for TasError {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
         let rep = match self {
             TasError::Parse { l, c, e } => format!("Parsing error at line {} col {}: {}", l, c, e),
+            TasError::Syntax { l, c, e } => format!("Syntax error at pos {}:{} - {}", l, c, e),
             TasError::Fs { e } => format!("{}", e),
         };
         write!(f, "{}", rep)

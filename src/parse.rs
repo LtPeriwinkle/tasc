@@ -64,7 +64,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
         match chr {
             '+' => {
                 if line != 0 || col != 0 {
-                    return Err(TasError::Parse {
+                    return Err(TasError::Syntax {
                         l: line,
                         c: col,
                         e: "`+` can only appear at the start of the script",
@@ -74,9 +74,9 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
             ' ' | '\t' => out.push(Token::Whitespace((line, col))),
             '\n' => {
                 if bracketed {
-                    return Err(TasError::Parse {l: line, c: col, e: "Newlines cannot appear in brackets."});
+                    return Err(TasError::Syntax {l: line, c: col, e: "Newlines cannot appear in brackets."});
                 } else if !matches!(it.peek(), Some('0'..='9')) && it.peek() != None {
-                    return Err(TasError::Parse {l: line, c: col, e: "A frame number must appear at the start of each line."});
+                    return Err(TasError::Syntax {l: line, c: col, e: "A frame number must appear at the start of each line."});
                 }
                 out.push(Token::Newline((line, col)));
                 line += 1;
@@ -84,7 +84,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
             }
             '{' => {
                 if bracketed || !matches!(out[out.len() - 1], Token::Operation(_, _)) {
-                    return Err(TasError::Parse {l: line, c: col, e: "Unexpected opening bracket."});
+                    return Err(TasError::Syntax {l: line, c: col, e: "Unexpected opening bracket."});
                 }
                 out.push(Token::BracketOpen((line, col)));
                 bracketed = true;
@@ -92,7 +92,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
             '}' => {
                 let last_tok = &out[out.len() - 1];
                 if !bracketed || (!matches!(last_tok, Token::Key(_, _)) && !(matches!(last_tok, Token::Number(_, _)) && bracketed)) {
-                    return Err(TasError::Parse {l: line, c: col, e: "Unexpected closing bracket."});
+                    return Err(TasError::Syntax {l: line, c: col, e: "Unexpected closing bracket."});
                 }
                 out.push(Token::BracketClose((line, col)));
                 bracketed = false;
@@ -100,7 +100,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
             ',' => {
                 let last_tok = &out[out.len() - 1];
                 if !matches!(last_tok, Token::Key(_, _)) && !(matches!(last_tok, Token::Number(_, _)) && bracketed) {
-                    return Err(TasError::Parse {l: line, c: col, e: "Commas can only appear inside brackets."});
+                    return Err(TasError::Syntax {l: line, c: col, e: "Commas can only appear inside brackets."});
                 }
                 out.push(Token::Comma((line, col)));
             }
@@ -116,7 +116,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
                         }
                         out.push(Token::Number(num.parse().unwrap(), (line, col)));
                     } else {
-                        return Err(TasError::Parse {
+                        return Err(TasError::Syntax {
                             l: line,
                             c: col,
                             e: "Frame numbers can only appear at the start of a line.",
@@ -132,7 +132,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
                         }
                         out.push(Token::Number(num.parse().unwrap(), (line, col)));
                     } else {
-                        return Err(TasError::Parse {
+                        return Err(TasError::Syntax {
                             l: line,
                             c: col,
                             e: "Expected one of `{` or `,` before stick parameter.",
@@ -151,7 +151,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
                     }
                     out.push(Token::Key(key, (line, col)));
                 } else {
-                    return Err(TasError::Parse {
+                    return Err(TasError::Syntax {
                         l: line,
                         c: col,
                         e: "Expected one of `{` or `,` before key identifier.",
@@ -170,14 +170,14 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
                         }
                         out.push(Token::Operation(op, (line, col)));
                     } else {
-                        return Err(TasError::Parse {
+                        return Err(TasError::Syntax {
                             l: line,
                             c: col,
                             e: "Expected whitespace before operation.",
                         });
                     }
                 } else {
-                    return Err(TasError::Parse {l: line, c: col, e: "Operations cannot appear inside brackets"});
+                    return Err(TasError::Syntax {l: line, c: col, e: "Operations cannot appear inside brackets"});
                 }
             }
             _ => {}
