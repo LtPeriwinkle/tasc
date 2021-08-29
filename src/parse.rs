@@ -1,38 +1,37 @@
-use std::time::Duration;
-use std::path::PathBuf;
 use std::fs::read_to_string;
+use std::path::PathBuf;
+use std::time::Duration;
 
 use crate::TasError;
 
 pub struct Tas {
-    lines: Vec<Line>
+    lines: Vec<Line>,
 }
 
 struct Line {
     delay: Duration,
     on: Option<u16>,
     off: Option<u16>,
-    sticks: Option<(Stick, Stick)>
+    sticks: Option<(Stick, Stick)>,
 }
-
 
 struct Stick {
     angle: u16,
-    magnitude: u16
+    magnitude: u16,
 }
 
 enum Token {
-    Number(u64, usize),
-    Operation(String, usize),
-    BracketOpen(usize),
-    BracketClose(usize),
-    Key(String, usize),
-    Comma(String, usize),
-    Newline(usize),
+    Number(u64, (usize, usize)),
+    Operation(String, (usize, usize)),
+    BracketOpen((usize, usize)),
+    BracketClose((usize, usize)),
+    Key(String, (usize, usize)),
+    Comma((usize, usize)),
+    Newline((usize, usize)),
+    Whitespace((usize, usize)),
 }
 
 // bitflags "enum"
-#[allow(dead_code)]
 mod key {
     pub const NONE: u16 = 0b0;
     pub const A: u16 = 0b1;
@@ -55,14 +54,79 @@ mod key {
 }
 
 fn lex(input: String) -> Result<Vec<Token>, TasError> {
-    for (idx, chr) in input.char_indices().peekable() {
-
+    let mut out = vec![];
+    let mut it = input.chars().peekable();
+    let mut line = 0;
+    let mut col = 0;
+    for chr in it.clone() {
+        match chr {
+            ' ' | '\t' => out.push(Token::Whitespace((line, col))),
+            '\n' => {
+                out.push(Token::Newline((line, col)));
+                line += 1;
+                col = 0;
+            }
+            '{' => out.push(Token::BracketOpen((line, col))),
+            '}' => out.push(Token::BracketClose((line, col))),
+            ',' => out.push(Token::Comma((line, col))),
+            '0'..='9' => {
+                let mut num = String::from(chr);
+                while let Some(d) = it.peek().filter(|c| c.is_ascii_digit()) {
+                    num.push(*d);
+                    it.next();
+                }
+                out.push(Token::Number(num.parse().unwrap(), (line, col)));
+            }
+            'K' => {
+                let last_tok = &out[out.len() - 1];
+                if let Token::BracketOpen(_) | Token::Comma(_) = last_tok {
+                    let mut key = String::from(chr);
+                    while let Some(c) = it.peek().filter(|&c| {
+                        (c.is_ascii_alphabetic() && c.is_ascii_uppercase()) || *c == '_'
+                    }) {
+                        key.push(*c);
+                        it.next();
+                    }
+                    out.push(Token::Key(key, (line, col)));
+                } else {
+                    return Err(TasError::Parse {
+                        l: line,
+                        c: col,
+                        e: "Expected one of `{` or `,` before key identifier.",
+                    });
+                }
+            }
+            'O' | 'R' | 'L' => {
+                let last_tok = &out[out.len() - 1];
+                if let Token::Whitespace(_) = last_tok {
+                    let mut op = String::from(chr);
+                    while let Some(c) = it
+                        .peek()
+                        .filter(|c| c.is_ascii_alphabetic() && c.is_ascii_uppercase())
+                    {
+                        op.push(*c);
+                        it.next();
+                    }
+                    out.push(Token::Operation(op, (line, col)));
+                } else {
+                    return Err(TasError::Parse {
+                        l: line,
+                        c: col,
+                        e: "Expected whitespace before operation.",
+                    });
+                }
+            }
+            _ => {}
+        }
+        col += 1;
     }
-    Ok(Vec::new())
+    Ok(out)
 }
 
 pub fn parse(infile: PathBuf) -> Result<Tas, TasError> {
-    let prog = read_to_string(infile).map_err(|e| TasError::Fs {e: format!("{}", e)})?;
+    let prog = read_to_string(infile).map_err(|e| TasError::Fs {
+        e: format!("{}", e),
+    })?;
     let tok = lex(prog);
-    Ok(Tas {lines: Vec::new()})
+    Ok(Tas { lines: Vec::new() })
 }
