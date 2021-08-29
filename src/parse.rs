@@ -20,6 +20,7 @@ struct Stick {
     magnitude: u16,
 }
 
+#[derive(Debug)]
 enum Token {
     Number(u64, (usize, usize)),
     Operation(String, (usize, usize)),
@@ -58,7 +59,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
     let mut it = input.chars().peekable();
     let mut line = 0;
     let mut col = 0;
-    for chr in it.clone() {
+    while let Some(chr) = it.next() {
         match chr {
             ' ' | '\t' => out.push(Token::Whitespace((line, col))),
             '\n' => {
@@ -77,13 +78,11 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
                 }
                 out.push(Token::Number(num.parse().unwrap(), (line, col)));
             }
-            'K' => {
+            'K' | 'A' | 'N' => {
                 let last_tok = &out[out.len() - 1];
                 if let Token::BracketOpen(_) | Token::Comma(_) = last_tok {
                     let mut key = String::from(chr);
-                    while let Some(c) = it.peek().filter(|&c| {
-                        (c.is_ascii_alphabetic() && c.is_ascii_uppercase()) || *c == '_'
-                    }) {
+                    while let Some(c) = it.peek().filter(|&c| c.is_ascii_uppercase() || *c == '_') {
                         key.push(*c);
                         it.next();
                     }
@@ -100,10 +99,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
                 let last_tok = &out[out.len() - 1];
                 if let Token::Whitespace(_) = last_tok {
                     let mut op = String::from(chr);
-                    while let Some(c) = it
-                        .peek()
-                        .filter(|c| c.is_ascii_alphabetic() && c.is_ascii_uppercase())
-                    {
+                    while let Some(c) = it.peek().filter(|c| c.is_ascii_uppercase()) {
                         op.push(*c);
                         it.next();
                     }
@@ -118,15 +114,18 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
             }
             _ => {}
         }
-        col += 1;
+        if chr != '\n' {
+            col += 1;
+        }
     }
     Ok(out)
 }
 
-pub fn parse(infile: PathBuf) -> Result<Tas, TasError> {
+pub fn gen_tas(infile: PathBuf) -> Result<Tas, TasError> {
     let prog = read_to_string(infile).map_err(|e| TasError::Fs {
         e: format!("{}", e),
     })?;
-    let tok = lex(prog);
+    let tok = lex(prog)?;
+    println!("{:?}", tok);
     Ok(Tas { lines: Vec::new() })
 }
