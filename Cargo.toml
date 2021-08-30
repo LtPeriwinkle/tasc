@@ -12,3 +12,4 @@ name = "tasc"
 path = "src/main.rs"
 
 [dependencies]
+once_cell = "1.8"

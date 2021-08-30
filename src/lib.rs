@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
 
 mod args;
 pub use args::*;
@@ -6,16 +7,16 @@ mod parse;
 
 #[derive(Debug)]
 pub enum TasError {
-    Parse { l: usize, c: usize, e: &'static str },
-    Syntax { l: usize, c: usize, e: &'static str},
+    Parse { l: usize, c: usize, e: &'static str, p: PathBuf},
+    Syntax { l: usize, c: usize, e: &'static str, p: PathBuf},
     Fs { e: String },
 }
 
 impl Display for TasError {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
         let rep = match self {
-            TasError::Parse { l, c, e } => format!("Parsing error at line {} col {}: {}", l, c, e),
-            TasError::Syntax { l, c, e } => format!("Syntax error at pos {}:{} - {}", l, c, e),
+            TasError::Parse { l, c, e, p } => format!("\x1b[31;1mParse Error:\x1b[0m \x1b[1m{}\x1b[0m\n\t->{}:{}:{}", e, p.display(), l, c),
+            TasError::Syntax { l, c, e, p } => format!("\x1b[31;1mSyntax Error:\x1b[0m \x1b[1m{}\x1b[0m\n\t->{}:{}:{}", e, p.display(), l, c),
             TasError::Fs { e } => format!("{}", e),
         };
         write!(f, "{}", rep)
@@ -23,6 +24,6 @@ impl Display for TasError {
 }
 
 pub fn run_tas(cfg: Config) -> Result<(), TasError> {
-    parse::gen_tas(cfg.infile)?;
+    let tas = parse::gen_tas(cfg.infile)?;
     Ok(())
 }

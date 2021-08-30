@@ -1,23 +1,170 @@
 use std::fs::read_to_string;
 use std::path::PathBuf;
 use std::time::Duration;
+use std::iter::Peekable;
+use std::slice::Iter;
+use once_cell::sync::OnceCell;
+
+static PATH: OnceCell<PathBuf> = OnceCell::new();
 
 use crate::TasError;
 
+#[derive(Debug)]
 pub struct Tas {
     lines: Vec<Line>,
 }
 
-struct Line {
-    delay: Duration,
-    on: Option<u16>,
-    off: Option<u16>,
-    sticks: Option<(Stick, Stick)>,
+impl Tas {
+    fn parse_tas(prog: Vec<Token>) -> Result<Self, TasError> {
+        let mut lines = vec![];
+        let prog_lines = prog.split(|t| matches!(t, Token::Newline(_)));
+        for line in prog_lines {
+            lines.push(Line::get(line)?);
+        }
+        Ok(Tas {lines})
+    }
 }
 
+#[derive(Debug)]
+struct Line {
+    delay: Duration,
+    on: u16,
+    off: u16,
+    lstick: Option<Stick>,
+    rstick: Option<Stick>
+}
+
+impl Line {
+    fn new() -> Self {
+        Line {
+            delay: Duration::ZERO,
+            on: key::NONE,
+            off: key::NONE,
+            lstick: None,
+            rstick: None
+        }
+    }
+    fn get(line: &[Token]) -> Result<Self, TasError> {
+        let mut out = Line::new();
+        let mut line = line.iter().peekable();
+        while let Some(tok) = line.next() {
+            match tok {
+                Token::Number(n, _) => {
+                    out.delay = Duration::from_nanos(16666666 * n);
+                }
+                Token::Operation(op, (l, c)) => {
+                    match op.as_str() {
+                        "ON" => {
+                            line.next();
+                            out.on = get_keys(&mut line)?;
+                        }
+                        "OFF" => {
+                            line.next();
+                            out.off = get_keys(&mut line)?;
+                        }
+                        "LSTICK" => {
+                            line.next();
+                            out.lstick = Some(Stick::get(&mut line)?);
+                        }
+                        "RSTICK" => {
+                            line.next();
+                            out.rstick = Some(Stick::get(&mut line)?);
+                        }
+                        "RAW" => {
+                            line.next();
+                            out.off = key::ALL;
+                            out.on = get_keys(&mut line)?;
+                        }
+                        _ => {
+                            return Err(TasError::Parse {l: *l, c: *c, e: "Unknown operation.", p: PATH.get().unwrap().into()});
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        Err(TasError::Fs {e: "a".into()})
+    }
+}
+
+fn get_keys(line: &mut Peekable<Iter<Token>>) -> Result<u16, TasError> {
+    let mut keys = key::NONE;
+    for tok in line {
+        if let Token::Key(k, (l, c)) =  tok {
+            if let Some(n) = key2u16(k) {
+                keys |= n;
+            } else {
+                return Err(TasError::Parse {l: *l, c: *c, e: "Unknown key identifier.", p: PATH.get().unwrap().into()});
+            }
+        } else if let Token::BracketClose(_) = tok {
+            break;
+        }
+    }
+    Ok(keys)
+}
+
+fn key2u16(key: &str) -> Option<u16> {
+    let key = key.rsplit_once('_')?.0;
+    match key {
+        "NONE" => Some(key::NONE),
+        "A" => Some(key::A),
+        "B" => Some(key::B),
+        "X" => Some(key::X),
+        "Y" => Some(key::Y),
+        "L" => Some(key::L),
+        "R" => Some(key::R),
+        "ZL" => Some(key::ZL),
+        "ZR" => Some(key::ZR),
+        "DUP" => Some(key::DUP),
+        "DDOWN" => Some(key::DDOWN),
+        "DLEFT" => Some(key::DLEFT),
+        "DRIGHT" => Some(key::DRIGHT),
+        "PLUS" => Some(key::PLUS),
+        "MINUS" => Some(key::MINUS),
+        "LSTICK" => Some(key::LSTICK),
+        "RSTICK" => Some(key::RSTICK),
+        "ALL" => Some(key::ALL),
+        _ => None
+    }
+}
+
+#[derive(Debug)]
 struct Stick {
-    angle: u16,
-    magnitude: u16,
+    x: i16,
+    y: i16
+}
+
+impl Stick {
+    fn new() -> Self {
+        Stick {
+            x: 0,
+            y: 0
+        }
+    }
+    fn get(line: &mut Peekable<Iter<Token>>) -> Result<Self, TasError> {
+        let mut stick = Stick::new();
+        let mut ang: f64 = f64::NAN;
+        let mut l: usize = 0;
+        let mut c: usize = 0;
+        if let Some(Token::Number(a, (lin, col))) = line.next() {
+            l = *lin;
+            c = *col;
+            ang = ((*a as f64) * std::f64::consts::PI) / 180.0;
+        }
+        // skip comma
+        line.next();
+        if let Some(Token::Number(m, (l, c))) = line.next() {
+            if !ang.is_nan() {
+                stick.x = (ang.sin() * *m as f64).ceil() as i16;
+                stick.y = (ang.cos() * *m as f64).ceil() as i16;
+            } else {
+                return Err(TasError::Parse {l: *l, c: *c, e: "Malformed stick information.", p: PATH.get().unwrap().into()});
+            }
+        } else {
+            return Err(TasError::Parse {l, c, e: "Malformed stick information.", p: PATH.get().unwrap().into()});
+        }
+        Ok(stick)
+    }
 }
 
 #[derive(Debug)]
@@ -57,9 +204,10 @@ mod key {
 fn lex(input: String) -> Result<Vec<Token>, TasError> {
     let mut out = vec![];
     let mut it = input.chars().peekable();
-    let mut line = 0;
+    let mut line = 1;
     let mut col = 0;
     let mut bracketed = false;
+    let i = PATH.get().unwrap();
     while let Some(chr) = it.next() {
         match chr {
             '+' => {
@@ -68,15 +216,16 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
                         l: line,
                         c: col,
                         e: "`+` can only appear at the start of the script",
+                        p: i.into()
                     });
                 }
             }
-            ' ' | '\t' => out.push(Token::Whitespace((line, col))),
+            ' ' => out.push(Token::Whitespace((line, col))),
             '\n' => {
                 if bracketed {
-                    return Err(TasError::Syntax {l: line, c: col, e: "Newlines cannot appear in brackets."});
+                    return Err(TasError::Syntax {l: line, c: col, e: "Newlines cannot appear in brackets.", p: i.into()});
                 } else if !matches!(it.peek(), Some('0'..='9')) && it.peek() != None {
-                    return Err(TasError::Syntax {l: line, c: col, e: "A frame number must appear at the start of each line."});
+                    return Err(TasError::Syntax {l: line, c: col, e: "A frame number must appear at the start of each line.", p: i.into()});
                 }
                 out.push(Token::Newline((line, col)));
                 line += 1;
@@ -84,7 +233,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
             }
             '{' => {
                 if bracketed || !matches!(out[out.len() - 1], Token::Operation(_, _)) {
-                    return Err(TasError::Syntax {l: line, c: col, e: "Unexpected opening bracket."});
+                    return Err(TasError::Syntax {l: line, c: col, e: "Unexpected opening bracket.", p: i.into()});
                 }
                 out.push(Token::BracketOpen((line, col)));
                 bracketed = true;
@@ -92,7 +241,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
             '}' => {
                 let last_tok = &out[out.len() - 1];
                 if !bracketed || (!matches!(last_tok, Token::Key(_, _)) && !(matches!(last_tok, Token::Number(_, _)) && bracketed)) {
-                    return Err(TasError::Syntax {l: line, c: col, e: "Unexpected closing bracket."});
+                    return Err(TasError::Syntax {l: line, c: col, e: "Unexpected closing bracket.", p: i.into()});
                 }
                 out.push(Token::BracketClose((line, col)));
                 bracketed = false;
@@ -100,7 +249,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
             ',' => {
                 let last_tok = &out[out.len() - 1];
                 if !matches!(last_tok, Token::Key(_, _)) && !(matches!(last_tok, Token::Number(_, _)) && bracketed) {
-                    return Err(TasError::Syntax {l: line, c: col, e: "Commas can only appear inside brackets."});
+                    return Err(TasError::Syntax {l: line, c: col, e: "Commas can only appear inside brackets.", p: i.into()});
                 }
                 out.push(Token::Comma((line, col)));
             }
@@ -119,7 +268,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
                         return Err(TasError::Syntax {
                             l: line,
                             c: col,
-                            e: "Frame numbers can only appear at the start of a line.",
+                            e: "Frame numbers can only appear at the start of a line.", p: i.into()
                         });
                     }
                 } else {
@@ -135,7 +284,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
                         return Err(TasError::Syntax {
                             l: line,
                             c: col,
-                            e: "Expected one of `{` or `,` before stick parameter.",
+                            e: "Expected one of `{` or `,` before stick parameter.", p: i.into()
                         });
                     }
                 }
@@ -154,7 +303,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
                     return Err(TasError::Syntax {
                         l: line,
                         c: col,
-                        e: "Expected one of `{` or `,` before key identifier.",
+                        e: "Expected one of `{` or `,` before key identifier.", p: i.into()
                     });
                 }
             }
@@ -173,11 +322,11 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
                         return Err(TasError::Syntax {
                             l: line,
                             c: col,
-                            e: "Expected whitespace before operation.",
+                            e: "Expected whitespace before operation.", p: i.into()
                         });
                     }
                 } else {
-                    return Err(TasError::Syntax {l: line, c: col, e: "Operations cannot appear inside brackets"});
+                    return Err(TasError::Syntax {l: line, c: col, e: "Operations cannot appear inside brackets", p: i.into()});
                 }
             }
             _ => {}
@@ -190,10 +339,10 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
 }
 
 pub fn gen_tas(infile: PathBuf) -> Result<Tas, TasError> {
-    let prog = read_to_string(infile).map_err(|e| TasError::Fs {
+    PATH.set(infile.clone()).unwrap();
+    let prog = read_to_string(infile.clone()).map_err(|e| TasError::Fs {
         e: format!("{}", e),
     })?;
     let tok = lex(prog)?;
-    println!("{:?}", tok);
-    Ok(Tas { lines: Vec::new() })
+    Tas::parse_tas(tok)
 }
