@@ -24,6 +24,15 @@ impl Tas {
         Ok(Tas {lines})
     }
 }
+impl Display for Tas {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
+        writeln!(f, "Frames   On               Off              Left Stick           Right Stick")?;
+        for l in &self.lines {
+            writeln!(f, "{}", l)?;
+        }
+        Ok(())
+    }
+}
 
 #[derive(Debug)]
 struct Line {
@@ -87,6 +96,16 @@ impl Line {
     }
 }
 
+impl Display for Line {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
+        let fr = " ".repeat(8 - format!("{}", self.delay.as_nanos() / 16666666).len());
+        let o1 = " ".repeat(16 - format!("{:b}", self.on).len());
+        let o2 = " ".repeat(16 - format!("{:b}", self.off).len());
+        let l = " ".repeat(20 - format!("{}", self.lstick.unwrap_or(Stick::new())).len());
+        write!(f, "{}{} {:b}{} {:b}{} {}{} {}", self.delay.as_nanos() / 16666666, fr, self.on, o1, self.off, o2, self.lstick.unwrap_or(Stick::new()), l, self.rstick.unwrap_or(Stick::new()))
+    }
+}
+
 fn get_keys(line: &mut Iter<Token>) -> Result<u16, TasError> {
     let mut keys = key::NONE;
     for tok in line {
@@ -134,7 +153,7 @@ fn key2u16(key: &str) -> Option<u16> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 struct Stick {
     x: i16,
     y: i16
@@ -170,6 +189,12 @@ impl Stick {
             return Err(TasError::Parse {l, c, e: "Malformed stick information.", p: PATH.get().unwrap().into()});
         }
         Ok(stick)
+    }
+}
+
+impl Display for Stick {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
+        write!(f, "(x: {}; y: {})", self.x, self.y)
     }
 }
 
@@ -350,7 +375,5 @@ pub fn gen_tas(infile: PathBuf) -> Result<Tas, TasError> {
         e: format!("{}", e),
     })?;
     let tok = lex(prog)?;
-    let t =Tas::parse_tas(tok);
-    println!("{:?}", t);
-    t
+    Tas::parse_tas(tok)
 }
