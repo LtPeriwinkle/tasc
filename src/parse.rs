@@ -1,3 +1,10 @@
+/*
+ * Copyright 2021 LtPeriwinkle
+ *
+ * Licensed under GPLv3 or later.
+ * Refer to included LICENSE file.
+ */
+
 use std::fs::read_to_string;
 use std::path::PathBuf;
 use std::time::Duration;

@@ -1,3 +1,10 @@
+/*
+ * Copyright 2021 LtPeriwinkle
+ *
+ * Licensed under GPLv3 or later.
+ * Refer to included LICENSE file.
+ */
+
 use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 

@@ -1,3 +1,10 @@
+/*
+ * Copyright 2021 LtPeriwinkle
+ *
+ * Licensed under GPLv3 or later.
+ * Refer to included LICENSE file.
+ */
+
 use tasc::{run_tas, Config};
 const USAGE: &str = "compile or interpret tas-script\n
 USAGE:
