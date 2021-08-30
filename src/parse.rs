@@ -83,7 +83,7 @@ impl Line {
                 _ => {}
             }
         }
-        Err(TasError::Fs {e: "a".into()})
+        Ok(out)
     }
 }
 
@@ -104,7 +104,7 @@ fn get_keys(line: &mut Peekable<Iter<Token>>) -> Result<u16, TasError> {
 }
 
 fn key2u16(key: &str) -> Option<u16> {
-    let key = key.rsplit_once('_')?.0;
+    let key = key.split_once('_')?.1;
     match key {
         "NONE" => Some(key::NONE),
         "A" => Some(key::A),
@@ -344,5 +344,7 @@ pub fn gen_tas(infile: PathBuf) -> Result<Tas, TasError> {
         e: format!("{}", e),
     })?;
     let tok = lex(prog)?;
-    Tas::parse_tas(tok)
+    let t =Tas::parse_tas(tok);
+    println!("{:?}", t);
+    t
 }
