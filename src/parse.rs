@@ -1,9 +1,9 @@
 use std::fs::read_to_string;
 use std::path::PathBuf;
 use std::time::Duration;
-use std::iter::Peekable;
 use std::slice::Iter;
 use once_cell::sync::OnceCell;
+use std::fmt::{Display, Formatter};
 
 static PATH: OnceCell<PathBuf> = OnceCell::new();
 
@@ -46,7 +46,7 @@ impl Line {
     }
     fn get(line: &[Token]) -> Result<Self, TasError> {
         let mut out = Line::new();
-        let mut line = line.iter().peekable();
+        let mut line = line.iter();
         while let Some(tok) = line.next() {
             match tok {
                 Token::Number(n, _) => {
@@ -87,7 +87,7 @@ impl Line {
     }
 }
 
-fn get_keys(line: &mut Peekable<Iter<Token>>) -> Result<u16, TasError> {
+fn get_keys(line: &mut Iter<Token>) -> Result<u16, TasError> {
     let mut keys = key::NONE;
     for tok in line {
         if let Token::Key(k, (l, c)) =  tok {
@@ -147,7 +147,7 @@ impl Stick {
             y: 0
         }
     }
-    fn get(line: &mut Peekable<Iter<Token>>) -> Result<Self, TasError> {
+    fn get(line: &mut Iter<Token>) -> Result<Self, TasError> {
         let mut stick = Stick::new();
         let mut ang: f64 = f64::NAN;
         let mut l: usize = 0;
