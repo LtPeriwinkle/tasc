@@ -211,7 +211,7 @@ fn lex(input: String) -> Result<Vec<Token>, TasError> {
     while let Some(chr) = it.next() {
         match chr {
             '+' => {
-                if line != 0 || col != 0 {
+                if line != 1 || col != 0 {
                     return Err(TasError::Syntax {
                         l: line,
                         c: col,
