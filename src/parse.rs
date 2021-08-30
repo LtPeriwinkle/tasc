@@ -104,27 +104,33 @@ fn get_keys(line: &mut Peekable<Iter<Token>>) -> Result<u16, TasError> {
 }
 
 fn key2u16(key: &str) -> Option<u16> {
-    let key = key.split_once('_')?.1;
-    match key {
-        "NONE" => Some(key::NONE),
-        "A" => Some(key::A),
-        "B" => Some(key::B),
-        "X" => Some(key::X),
-        "Y" => Some(key::Y),
-        "L" => Some(key::L),
-        "R" => Some(key::R),
-        "ZL" => Some(key::ZL),
-        "ZR" => Some(key::ZR),
-        "DUP" => Some(key::DUP),
-        "DDOWN" => Some(key::DDOWN),
-        "DLEFT" => Some(key::DLEFT),
-        "DRIGHT" => Some(key::DRIGHT),
-        "PLUS" => Some(key::PLUS),
-        "MINUS" => Some(key::MINUS),
-        "LSTICK" => Some(key::LSTICK),
-        "RSTICK" => Some(key::RSTICK),
-        "ALL" => Some(key::ALL),
-        _ => None
+    if key.starts_with('K') { 
+        let key = key.split_once('_')?.1;
+        match key {
+            "A" => Some(key::A),
+            "B" => Some(key::B),
+            "X" => Some(key::X),
+            "Y" => Some(key::Y),
+            "L" => Some(key::L),
+            "R" => Some(key::R),
+            "ZL" => Some(key::ZL),
+            "ZR" => Some(key::ZR),
+            "DUP" => Some(key::DUP),
+            "DDOWN" => Some(key::DDOWN),
+            "DLEFT" => Some(key::DLEFT),
+            "DRIGHT" => Some(key::DRIGHT),
+            "PLUS" => Some(key::PLUS),
+            "MINUS" => Some(key::MINUS),
+            "LSTICK" => Some(key::LSTICK),
+            "RSTICK" => Some(key::RSTICK),
+            _ => None
+        }
+    } else {
+        match key {
+            "NONE" => Some(key::NONE),
+            "ALL" => Some(key::ALL),
+            _ => None
+        }
     }
 }
 
