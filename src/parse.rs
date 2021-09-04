@@ -18,7 +18,7 @@ use crate::TasError;
 
 #[derive(Debug)]
 pub struct Tas {
-    lines: Vec<Line>,
+    pub lines: Vec<Line>,
 }
 
 impl Tas {
@@ -45,12 +45,12 @@ impl Display for Tas {
 }
 
 #[derive(Debug)]
-struct Line {
-    delay: Duration,
-    on: u16,
-    off: u16,
-    lstick: Option<Stick>,
-    rstick: Option<Stick>,
+pub struct Line {
+    pub delay: Duration,
+    pub on: u16,
+    pub off: u16,
+    pub lstick: Option<Stick>,
+    pub rstick: Option<Stick>,
 }
 
 impl Line {
@@ -184,7 +184,7 @@ fn key2u16(key: &str) -> Option<u16> {
 }
 
 #[derive(Debug, Copy, Clone)]
-struct Stick {
+pub struct Stick {
     x: i16,
     y: i16,
 }
