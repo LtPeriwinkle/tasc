@@ -185,8 +185,8 @@ fn key2u16(key: &str) -> Option<u16> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Stick {
-    x: i16,
-    y: i16,
+    pub x: i16,
+    pub y: i16,
 }
 
 impl Stick {
