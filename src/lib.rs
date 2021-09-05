@@ -60,6 +60,9 @@ impl Display for TasError {
 }
 
 pub fn run_tas(cfg: Config) -> Result<(), TasError> {
+    let start = std::time::Instant::now();
     let tas = parse::gen_tas(cfg.infile)?;
+    println!("Parsed tas in {}ms", start.elapsed().as_millis());
+    tas.run_tas(cfg.dbg);
     Ok(())
 }

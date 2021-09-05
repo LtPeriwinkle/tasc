@@ -27,7 +27,9 @@ impl Tas {
             let on_without_off = on_without_triggers & !line.off; // turn off bits for things that are not meant to be on
             on |= on_without_off;
             gamepad.buttons = XButtons::from(on);
-            println!("{:?}", on);
+            if dbg {
+                println!("Buttons {:#b} on; {:#b} off", on, !on);
+            }
             if let Some(s) = line.lstick {
                 lx = s.x;
                 ly = s.y;
@@ -40,6 +42,9 @@ impl Tas {
             }
             gamepad.thumb_rx = rx;
             gamepad.thumb_ry = ry;
+            if dbg {
+                println!("Lstick at ({}, {}); Rstick at ({}, {})", lx, ly, rx, ry);
+            }
             let triggers = on >> 10;
             if triggers & 1 == 0 {
                 lt = 255;
@@ -56,6 +61,9 @@ impl Tas {
             }
             gamepad.left_trigger = lt;
             gamepad.right_trigger = rt;
+            if dbg {
+                println!("ZR: {}; ZL: {}", rt >> 7, lt >> 7);
+            }
         }
         println!("Ran tas in {} ms", start.elapsed().as_millis());
         Ok(())

@@ -31,6 +31,7 @@ impl FromStr for Action {
 pub struct Config {
     pub act: Action,
     pub infile: PathBuf,
+    pub dbg: bool,
 }
 
 impl Config {
@@ -38,10 +39,16 @@ impl Config {
         let args = env::args();
         let mut args = args.skip(1);
         let cfg = Config {
+            dbg: false,
             act: Action::from_str(&args.next().ok_or("Not enough arguments.".to_owned())?)?,
             infile: PathBuf::from_str(&args.next().ok_or("Not enough arguments.".to_owned())?)
                 .unwrap(),
         };
+        if let Some(d) = args.next() {
+            if d == "--debug" || d == "-d" {
+                cfg.dbg = true;
+            }
+        }
         Ok(cfg)
     }
 }
