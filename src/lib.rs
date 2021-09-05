@@ -11,6 +11,7 @@ use std::path::PathBuf;
 mod args;
 pub use args::*;
 mod parse;
+mod vigem;
 
 #[derive(Debug)]
 pub enum TasError {
